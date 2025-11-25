@@ -1354,10 +1354,10 @@ with tab2:
                             
                             st.markdown(f"""
                             <div style='text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                                        border-radius: 10px; color: white;'>
-                                <h1 style='margin: 0; font-size: 60px;'>{emoji} {icd_total:.1f}</h1>
-                                <h3 style='margin: 10px 0 0 0;'>Calidad {nivel}</h3>
-                                <p style='margin: 5px 0 0 0; opacity: 0.9;'>sobre 100 puntos</p>
+                                        border-radius: 10px;'>
+                                <h1 style='margin: 0; font-size: 60px; color: white;'>{emoji} {icd_total:.1f}</h1>
+                                <h3 style='margin: 10px 0 0 0; color: white;'>Calidad {nivel}</h3>
+                                <p style='margin: 5px 0 0 0; opacity: 0.9; color: white;'>sobre 100 puntos</p>
                             </div>
                             """, unsafe_allow_html=True)
                         
