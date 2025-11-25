@@ -1242,14 +1242,13 @@ with tab2:
             
             col1, col2 = st.columns([3, 1])
             with col1:
-                # Determinar el valor default basado en el estado
-                default_vars = vars_disponibles if st.session_state.select_all_vars else []
-                
+                # Usar una key única para el multiselect
                 variables_seleccionadas = st.multiselect(
                     "Selecciona variables para analizar:",
                     options=vars_disponibles,
-                    default=default_vars,
-                    help="Selecciona las variables que deseas incluir en el análisis"
+                    default=vars_disponibles if st.session_state.select_all_vars else [],
+                    help="Selecciona las variables que deseas incluir en el análisis",
+                    key="multiselect_variables"
                 )
                 
                 # Selector de método para detección de outliers en ICD
@@ -1262,22 +1261,21 @@ with tab2:
                         'svm': '🤖 SVM - One-Class',
                         'combinado': '🔄 Combinado (suma de los 3)'
                     }[x],
-                    help="Selecciona el método para calcular la dimensión de Precisión en el ICD"
+                    help="Selecciona el método para calcular la dimensión de Precisión en el ICD",
+                    key="selectbox_metodo"
                 )
             
             with col2:
                 st.write("")
                 st.write("")
                 # Botón para seleccionar todas
-                if st.button("✅ Seleccionar Todas", use_container_width=True):
+                if st.button("✅ Seleccionar Todas", use_container_width=True, key="btn_select_all"):
                     st.session_state.select_all_vars = True
                     st.rerun()
-                analizar_btn = st.button("📈 Generar Análisis", type="primary", use_container_width=True)
+                analizar_btn = st.button("📈 Generar Análisis", type="primary", use_container_width=True, key="btn_analizar")
             
-            # Resetear el flag si el usuario cambia la selección manualmente
-            if not st.session_state.select_all_vars and len(variables_seleccionadas) == len(vars_disponibles):
-                st.session_state.select_all_vars = True
-            elif st.session_state.select_all_vars and len(variables_seleccionadas) != len(vars_disponibles):
+            # Resetear el flag después de usarlo (solo si se usó)
+            if st.session_state.select_all_vars:
                 st.session_state.select_all_vars = False
             
             if analizar_btn and variables_seleccionadas:
