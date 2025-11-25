@@ -1400,6 +1400,193 @@ with tab2:
                         
                         st.markdown("---")
                         
+                        # Métricas detalladas
+                        st.markdown("### 🔍 Métricas Detalladas")
+                        
+                        tab_comp, tab_uni, tab_prec, tab_var = st.tabs([
+                            "📊 Completitud", 
+                            "🔄 Unicidad", 
+                            "🎯 Precisión (Outliers)", 
+                            "📉 Variabilidad"
+                        ])
+                        
+                        with tab_comp:
+                            detalles_comp = resultado_icd['detalles']['completitud']
+                            
+                            col1, col2, col3 = st.columns(3)
+                            col1.metric("Valores totales", f"{detalles_comp['total_valores']:,}")
+                            col2.metric("Valores nulos", f"{detalles_comp['total_nulos']:,}")
+                            col3.metric("Completitud", f"{detalles_comp['pct_completo']:.1f}%")
+                            
+                            if detalles_comp['columnas_problematicas']:
+                                st.warning("⚠️ **Columnas con >50% de valores nulos:**")
+                                df_prob = pd.DataFrame([
+                                    {'Columna': col, '% Nulos': f"{pct:.1f}%"} 
+                                    for col, pct in detalles_comp['columnas_problematicas'].items()
+                                ])
+                                st.dataframe(df_prob, use_container_width=True, hide_index=True)
+                            else:
+                                st.success("✅ Todas las columnas tienen menos del 50% de valores nulos")
+                        
+                        with tab_uni:
+                            detalles_uni = resultado_icd['detalles']['unicidad']
+                            
+                            col1, col2, col3 = st.columns(3)
+                            col1.metric("Total filas", f"{len(st.session_state.df_original):,}")
+                            col2.metric("Filas duplicadas", f"{detalles_uni['filas_duplicadas']:,}")
+                            col3.metric("Unicidad", f"{detalles_uni['pct_registros_unicos']:.1f}%")
+                            
+                            if detalles_uni['filas_duplicadas'] > 0:
+                                st.warning(f"⚠️ Se detectaron **{detalles_uni['filas_duplicadas']}** filas duplicadas")
+                            else:
+                                st.success("✅ No hay filas duplicadas")
+                            
+                            if detalles_uni['columnas_con_duplicados_altos']:
+                                st.warning("⚠️ **Columnas con baja variedad (<20% únicos):**")
+                                df_dup = pd.DataFrame([
+                                    {
+                                        'Columna': col, 
+                                        'Valores únicos': info['valores_unicos'],
+                                        '% Unicidad': f"{info['pct_unicidad']:.1f}%"
+                                    }
+                                    for col, info in detalles_uni['columnas_con_duplicados_altos'].items()
+                                ])
+                                st.dataframe(df_dup, use_container_width=True, hide_index=True)
+                        
+                        with tab_prec:
+                            detalles_prec = resultado_icd['detalles']['precision']
+                            metodo_usado = detalles_prec.get('metodo_usado', 'iqr')
+                            
+                            # Mostrar método usado
+                            metodo_nombre = {
+                                'iqr': '📊 IQR (Cuartiles)',
+                                'kmeans': '🎯 K-means',
+                                'svm': '🤖 SVM (One-Class)',
+                                'combinado': '🔄 Combinado (3 métodos)'
+                            }.get(metodo_usado, metodo_usado)
+                            
+                            st.info(f"**Método usado para ICD:** {metodo_nombre}")
+                            
+                            col1, col2, col3 = st.columns(3)
+                            col1.metric("Datos numéricos", f"{detalles_prec['total_datos_numericos']:,}")
+                            col2.metric("Outliers detectados", f"{detalles_prec['total_outliers']:,}")
+                            col3.metric("Precisión", f"{detalles_prec['pct_datos_precisos']:.1f}%")
+                            
+                            if detalles_prec['outliers_por_columna']:
+                                st.warning(f"⚠️ **Variables con outliers detectados:**")
+                                
+                                outliers_data = []
+                                for col, info in detalles_prec['outliers_por_columna'].items():
+                                    row = {
+                                        'Variable': col,
+                                        'Outliers': info['cantidad'],
+                                        '% Outliers': f"{info['porcentaje']:.2f}%"
+                                    }
+                                    
+                                    # Agregar columnas según el método
+                                    if metodo_usado == 'iqr':
+                                        row.update({
+                                            'Límite Inferior': f"{info.get('limite_inferior', 0):.3f}",
+                                            'Límite Superior': f"{info.get('limite_superior', 0):.3f}",
+                                            'Valor Mín Atípico': f"{info.get('min_outlier', 0):.3f}",
+                                            'Valor Máx Atípico': f"{info.get('max_outlier', 0):.3f}"
+                                        })
+                                    elif metodo_usado == 'kmeans':
+                                        row.update({
+                                            'Threshold': f"{info.get('threshold', 0):.3f}",
+                                            'Valor Mín Atípico': f"{info.get('min_outlier', 0):.3f}",
+                                            'Valor Máx Atípico': f"{info.get('max_outlier', 0):.3f}"
+                                        })
+                                    elif metodo_usado == 'svm':
+                                        row.update({
+                                            'Valor Mín Atípico': f"{info.get('min_outlier', 0):.3f}",
+                                            'Valor Máx Atípico': f"{info.get('max_outlier', 0):.3f}"
+                                        })
+                                    elif metodo_usado == 'combinado':
+                                        row.update({
+                                            'Outliers IQR': info.get('outliers_iqr', 0),
+                                            'Outliers K-means': info.get('outliers_kmeans', 0),
+                                            'Outliers SVM': info.get('outliers_svm', 0),
+                                            'Únicos': info.get('outliers_unicos', info['cantidad']),
+                                            'Duplicados': info.get('overlapping', 0)
+                                        })
+                                    
+                                    outliers_data.append(row)
+                                
+                                df_outliers = pd.DataFrame(outliers_data)
+                                st.dataframe(df_outliers, use_container_width=True, hide_index=True)
+                                
+                                # Información del método
+                                if metodo_usado == 'iqr':
+                                    st.info("""
+                                    **ℹ️ Método IQR:** Outliers = valores fuera de [Q1 - 1.5×IQR, Q3 + 1.5×IQR]
+                                    Los outliers pueden ser valores legítimos extremos, no necesariamente errores.
+                                    """)
+                                elif metodo_usado == 'kmeans':
+                                    st.info("""
+                                    **ℹ️ Método K-means:** Agrupa datos y detecta puntos lejanos a centroides.
+                                    Threshold basado en percentil 90 de distancias.
+                                    """)
+                                elif metodo_usado == 'svm':
+                                    st.info("""
+                                    **ℹ️ Método SVM:** Aprende frontera de distribución normal.
+                                    Detecta anomalías con nu=0.1 (máx 10% outliers).
+                                    """)
+                                elif metodo_usado == 'combinado':
+                                    st.info("""
+                                    **ℹ️ Método Combinado:** Unión de outliers detectados por IQR, K-means y SVM.
+                                    - **Únicos**: Outliers sin duplicar (un punto solo se cuenta una vez)
+                                    - **Duplicados**: Outliers detectados por múltiples métodos
+                                    - Proporciona detección exhaustiva considerando los 3 enfoques
+                                    """)
+                            else:
+                                st.success("✅ No se detectaron outliers significativos")
+                        
+                        with tab_var:
+                            detalles_var = resultado_icd['detalles']['variabilidad']
+                            
+                            col1, col2 = st.columns(2)
+                            col1.metric("CV Promedio", f"{detalles_var['cv_promedio']:.1f}%")
+                            col2.metric("% Variables CV adecuado", f"{detalles_var['pct_variabilidad_adecuada']:.1f}%")
+                            
+                            if detalles_var['cv_por_columna']:
+                                st.markdown("**📊 Coeficiente de Variación:**")
+                                
+                                cv_data = []
+                                for col, cv in detalles_var['cv_por_columna'].items():
+                                    if abs(cv) < 10:
+                                        categoria = "Baja"
+                                        emoji_cv = "🟢"
+                                    elif abs(cv) < 50:
+                                        categoria = "Moderada"
+                                        emoji_cv = "🟡"
+                                    elif abs(cv) < 100:
+                                        categoria = "Alta"
+                                        emoji_cv = "🟠"
+                                    else:
+                                        categoria = "Muy Alta"
+                                        emoji_cv = "🔴"
+                                    
+                                    cv_data.append({
+                                        'Variable': col,
+                                        'CV (%)': f"{cv:.2f}",
+                                        'Categoría': f"{emoji_cv} {categoria}"
+                                    })
+                                
+                                df_cv = pd.DataFrame(cv_data)
+                                st.dataframe(df_cv, use_container_width=True, hide_index=True)
+                                
+                                if detalles_var['columnas_variabilidad_extrema']:
+                                    st.warning("⚠️ **Variables con variabilidad extrema:**")
+                                    for col, info in detalles_var['columnas_variabilidad_extrema'].items():
+                                        st.write(f"- **{col}**: CV = {info['cv']:.1f}% - {info['problema']}")
+                                
+                                st.info("""
+                                **ℹ️ Interpretación:** 🟢 <10% Baja | 🟡 10-50% Moderada | 🟠 50-100% Alta | 🔴 >100% Muy Alta
+                                """)
+                        
+                        st.markdown("---")
+                        
                         # Recomendaciones
                         st.markdown("### 💡 Recomendaciones")
                         recomendaciones = generar_recomendaciones(resultado_icd)
