@@ -958,6 +958,8 @@ if 'df_original' not in st.session_state:
     st.session_state.df_original = None
 if 'agent' not in st.session_state:
     st.session_state.agent = None
+if 'agent_config_key' not in st.session_state:
+    st.session_state.agent_config_key = None
 if 'data_source' not in st.session_state:
     st.session_state.data_source = None
 if 'cleaning_report' not in st.session_state:
@@ -1025,6 +1027,7 @@ with st.sidebar:
             st.session_state.df = None
             st.session_state.df_original = None
             st.session_state.agent = None
+            st.session_state.agent_config_key = None
             st.session_state.data_source = None
             st.session_state.cleaning_report = None
             st.session_state.chat_history = []
@@ -1528,23 +1531,38 @@ with tab3:
     if st.session_state.df is not None and openai_api_key:
         st.header("🤖 Agente de Análisis IA")
         
-        try:
-            # Inicializar el modelo de OpenAI
+        # Función para crear/recrear el agente
+        def create_agent():
             llm = ChatOpenAI(
                 model=model_name,
                 temperature=temperature,
                 openai_api_key=openai_api_key
             )
-            
-            # Crear el agente de pandas
-            agent = create_pandas_dataframe_agent(
+            return create_pandas_dataframe_agent(
                 llm,
                 st.session_state.df,
-                verbose=True,
+                verbose=False,  # Cambiar a False para evitar output duplicado
                 agent_type=AgentType.OPENAI_FUNCTIONS,
-                allow_dangerous_code=True  # Necesario para ejecutar código
+                allow_dangerous_code=True
             )
-            
+        
+        # Inicializar o recrear agente solo cuando sea necesario
+        # Verificar si necesitamos recrear el agente (cambio de modelo, temperatura o datos)
+        agent_config_key = f"{model_name}_{temperature}_{id(st.session_state.df)}"
+        
+        if 'agent_config_key' not in st.session_state:
+            st.session_state.agent_config_key = None
+        
+        if st.session_state.agent is None or st.session_state.agent_config_key != agent_config_key:
+            try:
+                st.session_state.agent = create_agent()
+                st.session_state.agent_config_key = agent_config_key
+            except Exception as e:
+                st.error(f"❌ Error al inicializar el agente: {str(e)}")
+                st.info("Verifica que tu API key de OpenAI sea válida y tenga créditos disponibles.")
+                st.session_state.agent = None
+        
+        if st.session_state.agent is not None:
             st.success("🎯 Agente IA inicializado correctamente")
             
             # Ejemplos de preguntas
@@ -1566,20 +1584,22 @@ with tab3:
             # Interface para hacer preguntas
             st.subheader("❓ Haz tu pregunta sobre los datos")
             
-            # Campo de entrada para la pregunta
-            user_question = st.text_input(
-                "Escribe tu pregunta:",
-                placeholder="Ej: ¿Cuál es la correlación entre las variables numéricas?",
-                key="user_input"
-            )
+            # Usar un formulario para evitar rerun automático
+            with st.form(key="question_form", clear_on_submit=True):
+                user_question = st.text_input(
+                    "Escribe tu pregunta:",
+                    placeholder="Ej: ¿Cuál es la correlación entre las variables numéricas?",
+                    key="user_input_form"
+                )
+                
+                col1, col2 = st.columns([1, 4])
+                with col1:
+                    ask_button = st.form_submit_button("🚀 Preguntar", type="primary")
+                with col2:
+                    pass  # Espacio vacío para mantener el layout
             
-            col1, col2 = st.columns([1, 4])
-            with col1:
-                ask_button = st.button("🚀 Preguntar", type="primary")
-            with col2:
-                clear_button = st.button("🗑️ Limpiar historial")
-            
-            if clear_button:
+            # Botón de limpiar historial fuera del formulario
+            if st.button("🗑️ Limpiar historial"):
                 st.session_state.chat_history = []
                 st.rerun()
             
@@ -1587,16 +1607,13 @@ with tab3:
                 with st.spinner("🔄 El agente está analizando tus datos..."):
                     try:
                         # Ejecutar la pregunta con el agente
-                        response = agent.invoke({"input": user_question})
+                        response = st.session_state.agent.invoke({"input": user_question})
                         
                         # Agregar al historial
                         st.session_state.chat_history.append({
                             "question": user_question,
                             "answer": response["output"]
                         })
-                        
-                        # Limpiar el campo de entrada
-                        st.rerun()
                         
                     except Exception as e:
                         st.error(f"❌ Error al procesar la pregunta: {str(e)}")
@@ -1613,10 +1630,6 @@ with tab3:
                         st.write("**Respuesta:**")
                         st.write(chat['answer'])
                         st.divider()
-            
-        except Exception as e:
-            st.error(f"❌ Error al inicializar el agente: {str(e)}")
-            st.info("Verifica que tu API key de OpenAI sea válida y tenga créditos disponibles.")
     
     else:
         if st.session_state.df is None:
