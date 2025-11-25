@@ -14,7 +14,7 @@ def main():
         layout="wide"
     )
     
-    st.title("📊 Análisis de Datos")
+    st.title("📊 Agente datos suelos Agrosavia")
     st.markdown("**Carga tu archivo CSV/XLS y haz preguntas sobre tus datos usando IA**")
     
     # Sidebar para configuración
