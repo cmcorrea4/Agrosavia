@@ -940,7 +940,7 @@ with tab1:
         with col1:
             st.subheader("👀 Vista Previa de Datos")
         with col2:
-            if st.button("🧹 Limpiar Datos", width='stretch'):
+            if st.button("🧹 Limpiar Datos", use_container_width=True):
                 with st.spinner("Limpiando datos..."):
                     df_clean = limpiar_datos(st.session_state.df)
                     filas_antes = len(st.session_state.df)
@@ -959,7 +959,7 @@ with tab1:
                     """)
                     st.rerun()
         
-        st.dataframe(st.session_state.df.head(10), width='stretch')
+        st.dataframe(st.session_state.df.head(10), use_container_width=True)
         
         with st.expander("ℹ️ Información del Dataset"):
             col1, col2, col3 = st.columns(3)
@@ -978,7 +978,7 @@ with tab1:
                     'Tipo': st.session_state.df.dtypes.astype(str)
                 }),
                 hide_index=True,
-                width='stretch'
+                use_container_width=True
             )
 
 # TAB 2: ÍNDICE DE CALIDAD
@@ -1004,7 +1004,7 @@ with tab2:
             
             with col2:
                 st.markdown("###")
-                analizar_btn = st.button("🔍 Analizar Calidad", type="primary", width='stretch')
+                analizar_btn = st.button("🔍 Analizar Calidad", type="primary", use_container_width=True)
             
             if variables_seleccionadas and analizar_btn:
                 with st.spinner("📊 Calculando índices de calidad..."):
@@ -1067,7 +1067,7 @@ with tab2:
                             })
                         
                         df_dimensiones = pd.DataFrame(dimensiones_data)
-                        st.dataframe(df_dimensiones, hide_index=True, width='stretch')
+                        st.dataframe(df_dimensiones, hide_index=True, use_container_width=True)
                         
                         # Detalles expandibles de cada dimensión
                         with st.expander("📊 Ver detalles de Completitud"):
@@ -1127,7 +1127,7 @@ with tab2:
                                     {'Variable': k, 'CV (%)': f"{v:.2f}"}
                                     for k, v in var['coeficientes_variacion'].items()
                                 ])
-                                st.dataframe(cv_df, hide_index=True, width='stretch')
+                                st.dataframe(cv_df, hide_index=True, use_container_width=True)
                         
                         with st.expander("📊 Ver detalles de Integridad"):
                             integ = detalles['integridad']
