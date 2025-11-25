@@ -1,7 +1,21 @@
-streamlit==1.28.1
-pandas==2.0.3
-numpy==1.24.3
-langchain==0.0.354
-langchain-openai==0.0.2
-langchain-experimental==0.0.47
-openpyxl==3.1.2
+# Streamlit y componentes básicos
+streamlit==1.39.0
+
+# Manejo de datos
+pandas==2.2.3
+numpy==1.26.4
+
+# Visualización
+plotly==5.24.1
+
+# Machine Learning
+scikit-learn==1.5.2
+
+# API de OpenAI
+openai==1.54.4
+
+# API Socrata
+sodapy==2.2.0
+
+# Dependencias adicionales
+requests==2.32.3
