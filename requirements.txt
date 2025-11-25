@@ -11,8 +11,10 @@ plotly==5.24.1
 # Machine Learning
 scikit-learn==1.5.2
 
-# API de OpenAI
+# API de OpenAI (versión compatible con httpx)
 openai==1.54.4
+httpx==0.27.2
+httpcore==1.0.6
 
 # API Socrata
 sodapy==2.2.0
