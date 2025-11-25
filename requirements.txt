@@ -32,3 +32,5 @@ httpx==0.25.2
 # Dependencias de LangChain
 pydantic==2.8.2
 pydantic-core==2.20.1
+
+tabulate
