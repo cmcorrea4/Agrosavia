@@ -268,12 +268,15 @@ def calcular_precision_outliers(df: pd.DataFrame, variables_numericas: List[str]
             'outliers_por_columna': {},
             'total_outliers': 0,
             'total_datos_numericos': 0,
-            'metodo_usado': metodo
+            'metodo_usado': metodo,
+            'df_outliers_completo': pd.DataFrame(),
+            'num_filas_con_outliers': 0
         }
     
     outliers_por_columna = {}
     total_outliers = 0
     total_datos = 0
+    todos_indices_outliers = set()  # Para recopilar todos los índices únicos de outliers
     
     for col in df_numeric.columns:
         data = df_numeric[col].dropna()
@@ -390,10 +393,26 @@ def calcular_precision_outliers(df: pd.DataFrame, variables_numericas: List[str]
                     'outliers_kmeans': n_outliers_kmeans,
                     'outliers_svm': n_outliers_svm,
                     'outliers_unicos': n_outliers,
-                    'overlapping': n_outliers_iqr + n_outliers_kmeans + n_outliers_svm - n_outliers
+                    'overlapping': n_outliers_iqr + n_outliers_kmeans + n_outliers_svm - n_outliers,
+                    'indices_outliers': list(indices_unicos)
                 })
         
+        # Guardar índices según el método usado
+        if metodo == 'iqr':
+            indices_metodo = indices_outliers_iqr
+        elif metodo == 'kmeans':
+            indices_metodo = indices_outliers_kmeans
+        elif metodo == 'svm':
+            indices_metodo = indices_outliers_svm
+        else:  # combinado
+            indices_metodo = indices_outliers_iqr | indices_outliers_kmeans | indices_outliers_svm
+        
+        # Agregar índices de esta variable al conjunto global
+        todos_indices_outliers.update(indices_metodo)
+        
         if n_outliers > 0:
+            if 'indices_outliers' not in outlier_info:
+                outlier_info['indices_outliers'] = list(indices_metodo)
             outliers_por_columna[col] = outlier_info
         
         total_outliers += n_outliers
@@ -413,13 +432,30 @@ def calcular_precision_outliers(df: pd.DataFrame, variables_numericas: List[str]
         pct_datos_precisos = 100
         score = 20
     
+    # Crear DataFrame con información completa de las filas con outliers
+    if len(todos_indices_outliers) > 0:
+        df_outliers_completo = df.loc[list(todos_indices_outliers)].copy()
+        # Agregar columna indicando en qué variables tiene outliers
+        variables_outlier = []
+        for idx in df_outliers_completo.index:
+            vars_con_outlier = []
+            for col, info in outliers_por_columna.items():
+                if idx in info.get('indices_outliers', []):
+                    vars_con_outlier.append(col)
+            variables_outlier.append(', '.join(vars_con_outlier) if vars_con_outlier else '')
+        df_outliers_completo['variables_con_outlier'] = variables_outlier
+    else:
+        df_outliers_completo = pd.DataFrame()
+    
     return {
         'score': score,
         'pct_datos_precisos': pct_datos_precisos,
         'outliers_por_columna': outliers_por_columna,
         'total_outliers': total_outliers,
         'total_datos_numericos': total_datos,
-        'metodo_usado': metodo
+        'metodo_usado': metodo,
+        'df_outliers_completo': df_outliers_completo,
+        'num_filas_con_outliers': len(todos_indices_outliers)
     }
 
 def calcular_variabilidad(df: pd.DataFrame, variables_numericas: List[str] = None) -> Dict:
@@ -1539,6 +1575,36 @@ with tab2:
                                     - **Duplicados**: Outliers detectados por múltiples métodos
                                     - Proporciona detección exhaustiva considerando los 3 enfoques
                                     """)
+                                
+                                # Nueva sección: DataFrame completo con filas de outliers
+                                st.markdown("---")
+                                st.markdown("#### 📋 Filas Completas con Outliers")
+                                
+                                df_outliers_full = detalles_prec.get('df_outliers_completo', pd.DataFrame())
+                                num_filas_outliers = detalles_prec.get('num_filas_con_outliers', 0)
+                                
+                                if not df_outliers_full.empty:
+                                    st.markdown(f"**Total de filas con al menos un outlier: {num_filas_outliers}**")
+                                    st.caption("Muestra las filas completas del dataset original que contienen valores atípicos")
+                                    
+                                    # Mostrar el dataframe con todas las columnas
+                                    st.dataframe(
+                                        df_outliers_full,
+                                        use_container_width=True,
+                                        height=400
+                                    )
+                                    
+                                    # Opción para descargar
+                                    csv_outliers = df_outliers_full.to_csv(index=True).encode('utf-8')
+                                    st.download_button(
+                                        label="📥 Descargar filas con outliers (CSV)",
+                                        data=csv_outliers,
+                                        file_name=f"outliers_completos_{metodo_usado}.csv",
+                                        mime="text/csv",
+                                        key="download_outliers_filas"
+                                    )
+                                else:
+                                    st.info("No hay filas con outliers para mostrar")
                             else:
                                 st.success("✅ No se detectaron outliers significativos")
                         
