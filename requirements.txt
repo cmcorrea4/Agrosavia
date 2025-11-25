@@ -1,5 +1,5 @@
 # Streamlit y componentes básicos
-streamlit==1.39.0
+streamlit==1.28.0
 
 # Manejo de datos
 pandas==2.2.3
